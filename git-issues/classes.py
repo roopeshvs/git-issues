@@ -1,6 +1,6 @@
 """
-issue.py
-contains classes, attributes, and methods pertaining to a single issue.
+classes.py
+contains all classes. all api calls happen here.
 """
 import requests
 import json
@@ -22,8 +22,9 @@ class GitHubRepo:
         
     
     def fetch_issues(self, state, token):
-        r = requests.get(f"https://api.github.com/repos/{self.owner}/{self.name}/issues?state={state}", 
-                                headers = {"Authorization": f"token {token}"})
+        url = f"https://api.github.com/repos/{self.owner}/{self.name}/issues?state={state}"
+        r = requests.get(url, 
+                        headers = {"Authorization": f"token {token}"})
         if r.status_code == 200:
             if len(r.json()) == 0:
                 print(f"There are no {state if state != 'all' else ''} issues in {self.repo}")    
@@ -47,11 +48,12 @@ class GitHubRepo:
             yield {'number': number, 'title': title, 'body': body, 'labels': labels, 'time_str' : time_str,
                     'assignees': assignees, 'author': author, 'state': state}
         
-    def print_table(self, state):
+    def print_table(self, state, author):
         table = []
         for issue in self.issues:
             if state == 'all' or issue.state == state:
-                table.append(issue.get_table_attrs())
+                if (author is not None and author == issue.author) or author is None:
+                    table.append(issue.get_table_attrs())
         table = tabulate(table, tablefmt="github")
         print(table)
 
@@ -133,8 +135,55 @@ class GitHubIssue:
             print(f"{response.json()['html_url']}")
         else:
             print(f"An API error occured in creating comment. Status Code: {response.status_code}")
-        
     
+    def update_issue(self, repo, token):
+        data = {}
+        if self.title is not None:
+            data['title'] = self.title
+        if self.body is not None:
+            data['body'] = self.body
+        if self.labels != ():
+            data['labels'] = self.labels
+        if self.assignees != ():
+            data['assignees'] = self.assignees
+        if self.state is not None:
+            data['state'] = self.state
+        json_data = json.dumps(data)
+        print(json_data)
+        response = requests.patch(f"https://api.github.com/repos/{repo}/issues/{self.number}", 
+                        headers = {"Authorization": f"token {token}",
+                                    "accept": "application/vnd.github.v3+json"},
+                        data = json_data
+        )
+        if response.status_code == 200:
+            print(f"Updated issue #{self.number} in {repo}\n")
+            print(f"{response.json()['html_url']}")
+        else:
+            print(f"An API error occured in updating issue. Status Code: {response.status_code}")
+
+    def lock_issue(self, reason, repo, token):
+        data = {'lock_reason':reason}
+        json_data = json.dumps(data)
+        response = requests.put(f"https://api.github.com/repos/{repo}/issues/{self.number}/lock", 
+                        headers = {"Authorization": f"token {token}",
+                                    "accept": "application/vnd.github.v3+json"},
+                        data = json_data
+        )
+        if response.status_code == 204:
+            print(f"Locked issue #{self.number} in {repo}\n")
+        else:
+            print(f"An API error occured in locking issue. Status Code: {response.status_code}")
+
+
+    def unlock_issue(self, repo, token):
+        response = requests.delete(f"https://api.github.com/repos/{repo}/issues/{self.number}/lock", 
+                        headers = {"Authorization": f"token {token}",
+                                    "accept": "application/vnd.github.v3+json"}
+        )
+        if response.status_code == 204:
+            print(f"Unlocked issue #{self.number} in {repo}\n")
+        else:
+            print(f"An API error occured in locking issue. Status Code: {response.status_code}")
 
 class APIException(Exception):
     pass

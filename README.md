@@ -10,19 +10,23 @@ Install From PyPI
 
 `pip install git-issues`
 
-### How to Use?
+### Commands
 
-#### Login
+Commands  |  Description
+----------|---------------
+  close   | close an issue on a github repo
+  comment | create a new comment on a github issue
+  create  | create an issue on a github repo
+  list    | list issues of a github repo
+  lock    | lock an issue
+  login   | gets token and stores it in a file only the user can access
+  reopen  | reopen an issue on a github repo
+  unlock  | unlock an issue
+  update  | update an issue on a github repo
 
-Login Using Personal Access Token.
-If you do not have a Personal Access Token, create one at `https://github.com/settings/tokens`
 
-`git-issues login -t <token>`
+Get more help on commands from the command-line with the --help option.
 
-If a token is not given during the time of command, a prompt will be issued.
 
-#### List Issues Of A Repository
-
-`git-issues list -r <repo>`
-
-By default, 
+This application requires the use of a GitHub Personal Access Token to Authorize.
+If you do not have a Personal Access Token, create one at [https://github.com/settings/tokens](https://github.com/settings/tokens)
