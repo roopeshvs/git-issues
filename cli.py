@@ -1,9 +1,8 @@
-import os
 import click
-import requests
-from pprint import pprint
 import configparser
-from utilities import authenticate, get_config_path, get_token, is_logged_in, get_repo
+from utilities import authenticate, get_config_path, get_token, get_repo, parse_issues, fetch_issues
+from tabulate import tabulate
+from classes import GitHubRepo, GitHubIssue
 
 
 @click.group()
@@ -12,38 +11,91 @@ def cli():
 
 @cli.command()
 @click.option("-t", "--token", help="personal access token unique to you. Requires repo, read:org permissions")
-@click.option("-r", "--repo", help="default repo if no repo is specified in other commands", envvar="GITHUB_PROJECT")
 def login(token, repo):
-    """git-issues - manage all your issues at one place"""
+    """
+    gets token and stores it in a file only the user can access
+    """
+    if token is None:
+        token = click.prompt("Tip: You can generate your personal access token at https://github.com/settings/tokens\nToken", hide_input=True)
     config = configparser.ConfigParser()
-    config['github-user'] = {'token':token}
+    config['github-user'] = {'token': token}
     with open(get_config_path(), 'w') as configfile:
         config.write(configfile)
 
 
 @cli.command()
 @click.option("-r", "--repo", default=None)
-def list(repo):
+@click.option("-t", "--title", default=None)
+@click.option("-b", "--body", default=None)
+@click.option("-l", "--labels", default=None, multiple=True)
+@click.option("-a", "--assignees", default=None, multiple=True)
+def create(repo, title, body, labels, assignees):
+    """
+    create an issue on a github repo
+    """
     authenticate()
     token = get_token()
     repo = get_repo(repo)
-    r = requests.get(f"https://api.github.com/repos/{repo}/issues", headers = {"Authorization": f"token {token}"})
-    if str(r.status_code).startswith("2"):
-        issues_len = len(r.json())
-        if issues_len > 0:
-            print(f"Showing {issues_len} Open Issues")
-            pprint(r.json())
-        else:
-            print("No Open Issues Found.")
-    else:
-        print("An error occurred fetching API from GitHub. Status Code : {r.status_code}")
+    issue = GitHubIssue({'title':title, 'body':body, 'labels':labels, 'assignees':assignees})
+    issue.create_issue(repo, token)
+
+    
+@cli.command()
+@click.argument("number", type=int)
+@click.option("-r", "--repo", default=None)
+def close(repo, number):
+    """
+    close an issue on a github repo
+    """
+    authenticate()
+    token = get_token()
+    repo = get_repo(repo)
+    issue = GitHubIssue({'number':number})
+    issue.close_issue(repo, token)
+
+
+@cli.command()
+@click.argument("number", type=int)
+@click.option("-r", "--repo", default=None)
+def reopen(repo, number):
+    """
+    reopen an issue on a github repo
+    """
+    authenticate()
+    token = get_token()
+    repo = get_repo(repo)
+    issue = GitHubIssue({'number':number})
+    issue.reopen_issue(repo, token)
+
+
+@cli.command()
+@click.argument("number", type=int)
+@click.option("-b", "--body", default=None)
+@click.option("-r", "--repo", default=None)
+def comment(body, repo, number):
+    """
+    create a new comment on a github issue
+    """
+    authenticate()
+    token = get_token()
+    repo = get_repo(repo)
+    issue = GitHubIssue({'number':number})
+    issue.create_comment(body, repo, token)
+
 
 @cli.command()
 @click.option("-r", "--repo", default=None)
-def create(repo):
+@click.option("-s", "--state", type=click.Choice(['open', 'closed', 'all'], case_sensitive=False), default='open')
+def list(repo, state):
+    """
+    list issues of a github repo
+    """
     authenticate()
     token = get_token()
-    
+    repo = get_repo(repo)
+    git_repo = GitHubRepo(repo, token)
+    git_repo.print_table(state)
+
 
 if __name__ == '__main__':
     cli()
