@@ -14,8 +14,8 @@ setup(
     name='git-issues',
     version='0.1',
     description='Manage all your git issues at one place',
-    long_description= long_description
-    author='@roopeshvs',
+    long_description= long_description,
+    author='Roopesh V S',
     author_email='txtmeroopesh@gmail.com',
     url='https://github.com/roopeshvs/git-issues',
     packages=[
@@ -26,7 +26,7 @@ setup(
     zip_safe=False,
     classifiers=[
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: BSD License',
+        'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
