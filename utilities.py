@@ -64,29 +64,3 @@ def get_repo(repo):
             url_split = line.split("/")
             repo = "/".join(url_split[-2:])[:-4]
     return repo
-
-def fetch_issues(state, repo, token):
-    issues = requests.get(f"https://api.github.com/repos/{repo}/issues?state={state}", 
-                            headers = {"Authorization": f"token {token}"})
-    if issues.status_code == 200:
-        if len(issues.json()) == 0:
-            print(f"There are no {state if state != 'all' else ''} issues in {repo}")    
-            exit()
-        return issues.json()
-    else:
-        raise APIException(f"Error Fetching API. Status Code: {r.status_code}")
-
-def parse_issues(issues):
-    for issue in issues:
-        number = issue['number']
-        title = issue['title']
-        body = issue['body']
-        labels = [issue['labels'][i]['name'] for i in range(len(issue['labels']))] if len(issue['labels']) > 0 else None
-        time_obj = datetime.strptime(issue['created_at'], '%Y-%m-%dT%H:%M:%SZ')
-        time_diff = datetime.utcnow() - time_obj
-        time_str = 'about ' + timeago.format(time_diff)
-        assignees = [issue['assignees'][i]['login'] for i in range(len(issue['assignees']))] if len(issue['assignees']) > 0 else None
-        author = issue['user']['login']
-        state = issue['state']
-        yield {'number': number, 'title': title, 'body': body, 'labels': labels, 'time_str' : time_str,
-                'assignees': assignees, 'author': author, 'state': state}

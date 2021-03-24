@@ -1,6 +1,6 @@
 import click
 import configparser
-from utilities import authenticate, get_config_path, get_token, get_repo, parse_issues, fetch_issues
+from utilities import authenticate, get_config_path, get_token, get_repo
 from tabulate import tabulate
 from classes import GitHubRepo, GitHubIssue
 
