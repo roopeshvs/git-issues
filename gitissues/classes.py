@@ -26,7 +26,7 @@ class GitHubRepo:
                         headers = {"Authorization": f"token {token}"})
         if r.status_code == 200:
             if len(r.json()) == 0:
-                print(f"There are no {state if state != 'all' else ''} issues in {self.repo}")    
+                print(f"There are no {state if state != 'all' else ''} issues in {self.owner}/{self.name}")    
                 exit()
             return r.json()
         else:
