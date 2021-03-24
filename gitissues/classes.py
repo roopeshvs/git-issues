@@ -4,8 +4,7 @@ contains all classes. all api calls happen here.
 """
 import requests
 import json
-from pprint import pprint
-from colour import COLOR
+from .colour import COLOR
 from datetime import datetime
 import timeago
 from tabulate import tabulate

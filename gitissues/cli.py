@@ -1,8 +1,8 @@
 import click
 import configparser
-from utilities import authenticate, get_config_path, get_token, get_repo
+from .utils import authenticate, get_config_path, get_token, get_repo
 from tabulate import tabulate
-from classes import GitHubRepo, GitHubIssue
+from .classes import GitHubRepo, GitHubIssue
 
 
 @click.group()
@@ -14,7 +14,7 @@ def cli():
 
 @cli.command()
 @click.option("-t", "--token", help="personal access token unique to you. Requires repo, read:org permissions")
-def login(token, repo):
+def login(token):
     """
     gets token and stores it in a file only the user can access
     """

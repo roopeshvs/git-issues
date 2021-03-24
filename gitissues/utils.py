@@ -6,7 +6,7 @@ import os
 import sys
 import configparser
 from subprocess import check_output, DEVNULL
-from classes import APIException
+from .classes import APIException
 import requests
 from datetime import datetime
 import json

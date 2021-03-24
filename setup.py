@@ -1,25 +1,25 @@
 from setuptools import setup
 
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
-
 requirements = [
-    'click'
-    'requests'
-    'tabulate'
+    'click',
+    'certifi',
+    'urllib3',
+    'chardet',
+    'idna',
+    'requests',
+    'tabulate',
     'timeago'
 ]
 
 setup(
-    name='git-issues',
-    version='0.1',
+    name='gitissues',
+    version='0.7',
     description='Manage all your git issues at one place',
-    long_description= long_description,
     author='Roopesh V S',
     author_email='txtmeroopesh@gmail.com',
     url='https://github.com/roopeshvs/git-issues',
     packages=[
-        'git-issues',
+        'gitissues',
     ],
     install_requires=requirements,
     license="BSD",
@@ -35,6 +35,6 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        git-issues=git-issues.cli:cli
+        gitissues=gitissues.cli:cli
     '''
 )
