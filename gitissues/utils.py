@@ -42,13 +42,13 @@ def get_token():
         config.read(config_file)
         return config['github-user']['token']
     
-def get_repo(repo):
+def get_repo_name(repo):
     """
     retrieves the repo for a command to work on.
     priority:
     1. --repo option
     2. Environment Variable: GITHUB_PROJECT
-    3. git remote of CWD if it is a git repository. 
+    3. CWD, if it is a git repo 
     """
     if repo:
         repo = repo

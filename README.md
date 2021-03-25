@@ -25,8 +25,12 @@ unlock  | unlock an issue
 update  | update an issue on a github repo
 
 
-Get more help on commands from the command-line with the --help option.
-
+Get more help on commands from the command-line with the `--help` option.
 
 This application requires the use of a GitHub Personal Access Token to Authorize.
+
 If you do not have a Personal Access Token, create one at [https://github.com/settings/tokens](https://github.com/settings/tokens)
+
+To login, run the command
+
+`gitissues login -t <token>`

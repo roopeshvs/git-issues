@@ -9,66 +9,76 @@ from datetime import datetime
 import timeago
 from tabulate import tabulate
 
-class GitHubRepo:
-    def __init__(self, repo, token):
-        self.owner = repo.split('/')[0]
-        self.name = repo.split('/')[1]
-        self.issues = []
-        issues = self.fetch_issues('all', token)
-        for issue in self.parse_issues(issues):               # parse_issues is a generator that returns a dictionary of attributes for every issue
-            issue_obj = GitHubIssue(issue)
-            self.issues.append(issue_obj)
-        
+class Github:
+    def __init__(self, token):
+        self.token = token
+        self.path = None
     
-    def fetch_issues(self, state, token):
-        url = f"https://api.github.com/repos/{self.owner}/{self.name}/issues?state={state}"
-        r = requests.get(url, 
-                        headers = {"Authorization": f"token {token}"})
-        if r.status_code == 200:
-            if len(r.json()) == 0:
-                print(f"There are no {state if state != 'all' else ''} issues in {self.owner}/{self.name}")    
-                exit()
-            return r.json()
-        else:
-            raise APIException(f"Error Fetching API. Status Code: {r.status_code}")
-    
-    def parse_issues(self, issues):
-        for issue in issues:
-            number = issue['number']
-            title = issue['title']
-            body = issue['body']
-            labels = [issue['labels'][i]['name'] for i in range(len(issue['labels']))] if len(issue['labels']) > 0 else None
-            time_obj = datetime.strptime(issue['created_at'], '%Y-%m-%dT%H:%M:%SZ')
-            time_diff = datetime.utcnow() - time_obj
-            time_str = 'about ' + timeago.format(time_diff)
-            assignees = [issue['assignees'][i]['login'] for i in range(len(issue['assignees']))] if len(issue['assignees']) > 0 else None
-            author = issue['user']['login']
-            state = issue['state']
-            yield {'number': number, 'title': title, 'body': body, 'labels': labels, 'time_str' : time_str,
-                    'assignees': assignees, 'author': author, 'state': state}
-        
-    def print_table(self, state, author):
-        table = []
-        for issue in self.issues:
-            if state == 'all' or issue.state == state:
-                if (author is not None and author == issue.author) or author is None:
-                    table.append(issue.get_table_attrs())
-        table = tabulate(table, tablefmt="github")
-        print(table)
+    def request(self, method, path, params = None, data = None):
+        url = "https://api.github.com" + path
+        if params:
+            url += "?"
+            for key,value in params.items():
+                if value != None:
+                    url += f"{key}={value}"
 
-class GitHubIssue:
-    def __init__(self, *args):
-        attr = {}
-        if args:
-            attr = args[0]
-        self.number = attr.get('number', None)
-        self.title = attr.get('title', None)
-        self.body = attr.get('body', None)
-        self.labels = attr.get('labels', None)
-        self.created = attr.get('time_str', None)
-        self.assignees = attr.get('assignees', None)
-        self.author = attr.get('author', None)
-        self.state = attr.get('state', None)
+        if data:
+            data = json.dumps(data)
+
+        headers = {"Authorization": f"token {self.token}",
+                   "accept": "application/vnd.github.v3+json"}
+
+        response = requests.request(method, url, 
+                                    headers=headers,
+                                    data = data)
+
+        if response.status_code > 299:
+            raise APIException(f"An API Exception has occured.\
+                                \nStatus Code: {response.status_code}\nResponse: {response.text}")
+        elif response.status_code == 204:
+            return
+
+        return response.json()
+
+    def get_repo(self, name):
+        self.path = f"/repos/{name}"
+        data = self.request("GET", self.path)
+        return GithubRepo(self, data)
+        
+        
+class GithubRepo:
+    def __init__(self, github, data):
+        self.data = data
+        self.github = github
+
+    def get_issues(self, params=None):
+        path = f"{self.github.path}/issues"
+        data = self.github.request("GET", path, params = params)
+        return [GithubIssue(self.github, d) for d in data]
+    
+    def create_issue(self, title, body=None, labels=None, assignees=None):
+        data = locals()                                         # Get a dictionary of local values. At this point, all arguments of the function.
+        del data['self']
+        data = {k:v for k,v in data.items() if v is not None}
+
+        path = f"{self.github.path}/issues"
+        data = self.github.request("POST", path, data = data)
+        return GithubIssue(self.github, data)
+        
+class GithubIssue:
+    def __init__(self, github, data):
+        self.github = github
+        self.number = data['number']
+        self.title = data['title']
+        self.body = data['body']
+        self.labels = [data['labels'][i]['name'] for i in range(len(data['labels']))] if len(data['labels']) > 0 else None
+        time_obj = datetime.strptime(data['created_at'], '%Y-%m-%dT%H:%M:%SZ')
+        time_diff = datetime.utcnow() - time_obj
+        self.created = 'about ' + timeago.format(time_diff)
+        self.assignees = [data['assignees'][i]['login'] for i in range(len(data['assignees']))] if len(data['assignees']) > 0 else None
+        self.author = data['user']['login']
+        self.state = data['state']
+        self.html_url = data['html_url']
 
     def get_table_attrs(self):
         labels = ", ".join([item for item in self.labels]) if self.labels is not None else None
@@ -78,111 +88,39 @@ class GitHubIssue:
             f"{COLOR['BLUE']}{labels}{COLOR['ENDC']}" if self.labels is not None else None,
             self.created
         ]
-    
-    def create_issue(self, repo, token):
-        data = {'title':self.title, 'body': self.body, 'labels': self.labels, 'assignees':self.assignees}
-        json_data = json.dumps(data)
-        response = requests.post(f"https://api.github.com/repos/{repo}/issues", 
-                        headers = {"Authorization": f"token {token}",
-                                    "accept": "application/vnd.github.v3+json"},
-                        data = json_data
-        )
-        if response.status_code == 201:
-            print(f"Created issue in {repo}\n")
-            print(f"{response.json()['html_url']}")
-        else:
-            print(f"An API error occured in creating issue. Status Code: {response.status_code}")
-    
-    def close_issue(self, repo, token):
+
+    def close_issue(self):
         data = {'state': 'closed'}
-        json_data = json.dumps(data)
-        response = requests.patch(f"https://api.github.com/repos/{repo}/issues/{self.number}", 
-                        headers = {"Authorization": f"token {token}",
-                                    "accept": "application/vnd.github.v3+json"},
-                        data = json_data
-        )
-        if response.status_code == 200:
-            print(f"Closed issue #{self.number} in {repo}\n")
-            print(f"{response.json()['html_url']}")
-        else:
-            print(f"An API error occured in closing issue. Status Code: {response.status_code}")
+        path = f"{self.github.path}/issues/{self.number}"
+        self.github.request("PATCH", path, data = data)
     
-    def reopen_issue(self, repo, token):
+    def reopen_issue(self):
         data = {'state': 'open'}
-        json_data = json.dumps(data)
-        response = requests.patch(f"https://api.github.com/repos/{repo}/issues/{self.number}", 
-                        headers = {"Authorization": f"token {token}",
-                                    "accept": "application/vnd.github.v3+json"},
-                        data = json_data
-        )
-        if response.status_code == 200:
-            print(f"Reopened issue #{self.number} in {repo}\n")
-            print(f"{response.json()['html_url']}")
-        else:
-            print(f"An API error occured in reopening issue. Status Code: {response.status_code}")
+        path = f"{self.github.path}/issues/{self.number}"
+        self.github.request("PATCH", path, data = data)
+
+    def update_issue(self, title, body=None, labels=None, assignees=None, state=None):
+        data = locals()
+        del data['self']
+        data = {k:v for k,v in data.items() if v is not None}
+
+        path = f"{self.github.path}/issues/{self.number}"
+        self.github.request("PATCH", path, data = data)
     
-    def create_comment(self, body, repo, token):
+    def create_comment(self, body):
         data = {'body': body}
-        json_data = json.dumps(data)
-        response = requests.post(f"https://api.github.com/repos/{repo}/issues/{self.number}/comments", 
-                        headers = {"Authorization": f"token {token}",
-                                    "accept": "application/vnd.github.v3+json"},
-                        data = json_data
-        )
-        if response.status_code == 201:
-            print(f"Added new comment in issue #{self.number} in {repo}\n")
-            print(f"{response.json()['html_url']}")
-        else:
-            print(f"An API error occured in creating comment. Status Code: {response.status_code}")
+        path = f"{self.github.path}/issues/{self.number}/comments"
+        comment = self.github.request("POST", path, data = data)
+        return comment
     
-    def update_issue(self, repo, token):
-        data = {}
-        if self.title is not None:
-            data['title'] = self.title
-        if self.body is not None:
-            data['body'] = self.body
-        if self.labels != ():
-            data['labels'] = self.labels
-        if self.assignees != ():
-            data['assignees'] = self.assignees
-        if self.state is not None:
-            data['state'] = self.state
-        json_data = json.dumps(data)
-        print(json_data)
-        response = requests.patch(f"https://api.github.com/repos/{repo}/issues/{self.number}", 
-                        headers = {"Authorization": f"token {token}",
-                                    "accept": "application/vnd.github.v3+json"},
-                        data = json_data
-        )
-        if response.status_code == 200:
-            print(f"Updated issue #{self.number} in {repo}\n")
-            print(f"{response.json()['html_url']}")
-        else:
-            print(f"An API error occured in updating issue. Status Code: {response.status_code}")
+    def lock_issue(self, lock_reason):
+        data = {'lock_reason': lock_reason}
+        path = f"{self.github.path}/issues/{self.number}/lock"
+        self.github.request("PUT", path, data = data)
 
-    def lock_issue(self, reason, repo, token):
-        data = {'lock_reason':reason}
-        json_data = json.dumps(data)
-        response = requests.put(f"https://api.github.com/repos/{repo}/issues/{self.number}/lock", 
-                        headers = {"Authorization": f"token {token}",
-                                    "accept": "application/vnd.github.v3+json"},
-                        data = json_data
-        )
-        if response.status_code == 204:
-            print(f"Locked issue #{self.number} in {repo}\n")
-        else:
-            print(f"An API error occured in locking issue. Status Code: {response.status_code}")
-
-
-    def unlock_issue(self, repo, token):
-        response = requests.delete(f"https://api.github.com/repos/{repo}/issues/{self.number}/lock", 
-                        headers = {"Authorization": f"token {token}",
-                                    "accept": "application/vnd.github.v3+json"}
-        )
-        if response.status_code == 204:
-            print(f"Unlocked issue #{self.number} in {repo}\n")
-        else:
-            print(f"An API error occured in locking issue. Status Code: {response.status_code}")
+    def unlock_issue(self):
+        path = f"{self.github.path}/issues/{self.number}/lock"
+        self.github.request("DELETE", path)
 
 class APIException(Exception):
     pass

@@ -1,8 +1,8 @@
 import click
 import configparser
-from .utils import authenticate, get_config_path, get_token, get_repo
+from .utils import authenticate, get_config_path, get_token, get_repo_name
 from tabulate import tabulate
-from .classes import GitHubRepo, GitHubIssue
+from .classes import Github, GithubIssue
 
 
 @click.group()
@@ -16,7 +16,7 @@ def cli():
 @click.option("-t", "--token", help="personal access token unique to you. Requires repo, read:org permissions")
 def login(token):
     """
-    gets token and stores it in a file only the user can access
+    gets token from the user to perform authenticated api calls
     """
     if token is None:
         token = click.prompt("Tip: You can generate your personal access token at https://github.com/settings/tokens\nToken", hide_input=True)
@@ -38,9 +38,12 @@ def create(repo, title, body, labels, assignees):
     """
     authenticate()
     token = get_token()
-    repo = get_repo(repo)
-    issue = GitHubIssue({'title':title, 'body':body, 'labels':labels, 'assignees':assignees})
-    issue.create_issue(repo, token)
+    repository = get_repo_name(repo)
+
+    g = Github(token)
+    repo = g.get_repo(repository)
+    issue = repo.create_issue(title=title, body=body, labels=labels, assignees=assignees)
+    print(f"Issue #{issue.number} Created Successfully in {repository}\n\n{issue.html_url}")
 
     
 @cli.command()
@@ -52,10 +55,18 @@ def close(repo, number):
     """
     authenticate()
     token = get_token()
-    repo = get_repo(repo)
-    issue = GitHubIssue({'number':number})
-    issue.close_issue(repo, token)
+    repository = get_repo_name(repo)
 
+    g = Github(token)
+    repo = g.get_repo(repository)
+    issues = repo.get_issues()
+    for issue in issues:
+        if issue.number == number:
+            issue.close_issue()
+            print(f"Issue #{issue.number} Closed Successfully in {repository}\n\n{issue.html_url}")
+
+    if len(issues) == 0:
+        print("Please enter a valid issue number")
 
 @cli.command()
 @click.argument("number", type=int)
@@ -66,10 +77,18 @@ def reopen(repo, number):
     """
     authenticate()
     token = get_token()
-    repo = get_repo(repo)
-    issue = GitHubIssue({'number':number})
-    issue.reopen_issue(repo, token)
+    repository = get_repo_name(repo)
 
+    g = Github(token)
+    repo = g.get_repo(repository)
+    issues = repo.get_issues(params={'state':'closed'})
+    for issue in issues:
+        if issue.number == number:
+            issue.reopen_issue()
+            print(f"Issue #{issue.number} Reopened Successfully in {repository}\n\n{issue.html_url}")
+
+    if len(issues) == 0:
+        print("Please enter a valid issue number")
 
 @cli.command()
 @click.argument("number", type=int)
@@ -81,10 +100,21 @@ def comment(body, repo, number):
     """
     authenticate()
     token = get_token()
-    repo = get_repo(repo)
-    issue = GitHubIssue({'number':number})
-    issue.create_comment(body, repo, token)
+    repository = get_repo_name(repo)
 
+    if body == None:
+        body = click.prompt("Issue comment requires a body.\nComment")
+
+    g = Github(token)
+    repo = g.get_repo(repository)
+    issues = repo.get_issues(params={'state':'all'})
+    for issue in issues:
+        if issue.number == number:
+            comment = issue.create_comment(body=body)
+            print(f"Comment created in issue #{issue.number} in {repository}\n\n{comment['html_url']}")
+
+    if len(issues) == 0:
+        print("Please enter a valid issue number")
 
 @cli.command()
 @click.argument("number", type=int)
@@ -100,9 +130,19 @@ def update(number, repo, title, body, state, labels, assignees):
     """
     authenticate()
     token = get_token()
-    repo = get_repo(repo)
-    issue = GitHubIssue({'number':number, 'title':title, 'body':body, 'labels':labels, 'assignees':assignees, 'state':state})
-    issue.update_issue(repo, token)
+    repository = get_repo_name(repo)
+    
+    g = Github(token)
+    repo = g.get_repo(repository)
+    issues = repo.get_issues(params={'state':'all'})
+    
+    for issue in issues:
+        if issue.number == number:
+            issue.update_issue(title=title, body=body, labels=labels, assignees=assignees, state=state)
+            print(f"Issue #{issue.number} updated successfully in {repository}\n\n{issue.html_url}")
+    
+    if len(issues) == 0:
+        print("Please enter a valid issue number")
 
 @cli.command()
 @click.option("-r", "--repo", help = "github repository in format username/repo", default=None)
@@ -115,9 +155,19 @@ def list(repo, state, author):
     """
     authenticate()
     token = get_token()
-    repo = get_repo(repo)
-    git_repo = GitHubRepo(repo, token)
-    git_repo.print_table(state, author)
+    repository = get_repo_name(repo)
+
+    g = Github(token)
+    repo = g.get_repo(repository)
+    table = []
+    issues = repo.get_issues(params={'state':state, 'creator':author})
+
+    for issue in issues:
+        table.append(issue.get_table_attrs())
+
+    if len(issues) == 0:
+        print(f"No {'open' if state == 'all' else ''} issues found in {repository}.")
+    print(tabulate(table))
 
 @cli.command()
 @click.argument("number", type=int)
@@ -135,10 +185,19 @@ def lock(number, repo, lock_reason):
                                     type=click.Choice(['off topic', 'too heated', 'resolved', 'spam'], case_sensitive=False))
     authenticate()
     token = get_token()
-    repo = get_repo(repo)
-    issue = GitHubIssue({'number':number})
-    issue.lock_issue(lock_reason, repo, token)
+    repository = get_repo_name(repo)
 
+    g = Github(token)
+    repo = g.get_repo(repository)
+    issues = repo.get_issues(params={'state':'all'})
+
+    for issue in issues:
+        if issue.number == number:
+            issue.lock_issue(lock_reason=lock_reason)
+            print(f"Issue #{issue.number} Locked in {repository}")
+
+    if len(issues) == 0:
+        print("Please enter a valid issue number")
 
 @cli.command()
 @click.argument("number", type=int)
@@ -150,9 +209,19 @@ def unlock(number, repo):
     """
     authenticate()
     token = get_token()
-    repo = get_repo(repo)
-    issue = GitHubIssue({'number':number})
-    issue.unlock_issue(repo, token)
+    repository = get_repo_name(repo)
+
+    g = Github(token)
+    repo = g.get_repo(repository)
+    issues = repo.get_issues(params={'state':'all'})
+
+    for issue in issues:
+        if issue.number == number:
+            issue.unlock_issue()
+            print(f"Issue #{issue.number} unlocked in {repository}")
+    
+    if len(issues) == 0:
+        print("Please enter a valid issue number")
 
 if __name__ == '__main__':
     cli()
