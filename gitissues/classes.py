@@ -24,20 +24,17 @@ class Github:
 
         if data:
             data = json.dumps(data)
-
         headers = {"Authorization": f"token {self.token}",
                    "accept": "application/vnd.github.v3+json"}
-
         response = requests.request(method, url, 
                                     headers=headers,
                                     data = data)
-
+                                    
         if response.status_code > 299:
             raise APIException(f"An API Exception has occured.\
                                 \nStatus Code: {response.status_code}\nResponse: {response.text}")
         elif response.status_code == 204:
             return
-
         return response.json()
 
     def get_repo(self, name):
@@ -55,6 +52,11 @@ class GithubRepo:
         path = f"{self.github.path}/issues"
         data = self.github.request("GET", path, params = params)
         return [GithubIssue(self.github, d) for d in data]
+    
+    def get_issue(self, number):
+        path = f"{self.github.path}/issues/{number}"
+        data = self.github.request("GET", path)
+        return GithubIssue(self.github, data)
     
     def create_issue(self, title, body=None, labels=None, assignees=None):
         data = locals()                                         # Get a dictionary of local values. At this point, all arguments of the function.

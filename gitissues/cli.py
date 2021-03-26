@@ -40,6 +40,9 @@ def create(repo, title, body, labels, assignees):
     token = get_token()
     repository = get_repo_name(repo)
 
+    if title == None:
+        title = click.prompt("An issue title is mandatory.\nTitle")
+
     g = Github(token)
     repo = g.get_repo(repository)
     issue = repo.create_issue(title=title, body=body, labels=labels, assignees=assignees)
@@ -59,14 +62,9 @@ def close(repo, number):
 
     g = Github(token)
     repo = g.get_repo(repository)
-    issues = repo.get_issues()
-    for issue in issues:
-        if issue.number == number:
-            issue.close_issue()
-            print(f"Issue #{issue.number} Closed Successfully in {repository}\n\n{issue.html_url}")
-
-    if len(issues) == 0:
-        print("Please enter a valid issue number")
+    issue = repo.get_issue(number)
+    issue.close_issue()
+    print(f"Issue #{issue.number} Closed Successfully in {repository}\n\n{issue.html_url}")
 
 @cli.command()
 @click.argument("number", type=int)
@@ -81,14 +79,10 @@ def reopen(repo, number):
 
     g = Github(token)
     repo = g.get_repo(repository)
-    issues = repo.get_issues(params={'state':'closed'})
-    for issue in issues:
-        if issue.number == number:
-            issue.reopen_issue()
-            print(f"Issue #{issue.number} Reopened Successfully in {repository}\n\n{issue.html_url}")
+    issue = repo.get_issue(number)
+    issue.reopen_issue()
+    print(f"Issue #{issue.number} Reopened Successfully in {repository}\n\n{issue.html_url}")
 
-    if len(issues) == 0:
-        print("Please enter a valid issue number")
 
 @cli.command()
 @click.argument("number", type=int)
@@ -107,14 +101,10 @@ def comment(body, repo, number):
 
     g = Github(token)
     repo = g.get_repo(repository)
-    issues = repo.get_issues(params={'state':'all'})
-    for issue in issues:
-        if issue.number == number:
-            comment = issue.create_comment(body=body)
-            print(f"Comment created in issue #{issue.number} in {repository}\n\n{comment['html_url']}")
+    issue = repo.get_issue(number)
+    comment = issue.create_comment(body=body)
+    print(f"Comment created in issue #{issue.number} in {repository}\n\n{comment['html_url']}")
 
-    if len(issues) == 0:
-        print("Please enter a valid issue number")
 
 @cli.command()
 @click.argument("number", type=int)
@@ -134,15 +124,10 @@ def update(number, repo, title, body, state, labels, assignees):
     
     g = Github(token)
     repo = g.get_repo(repository)
-    issues = repo.get_issues(params={'state':'all'})
-    
-    for issue in issues:
-        if issue.number == number:
-            issue.update_issue(title=title, body=body, labels=labels, assignees=assignees, state=state)
-            print(f"Issue #{issue.number} updated successfully in {repository}\n\n{issue.html_url}")
-    
-    if len(issues) == 0:
-        print("Please enter a valid issue number")
+    issue = repo.get_issue(number)
+    issue.update_issue(title=title, body=body, labels=labels, assignees=assignees, state=state)
+    print(f"Issue #{issue.number} updated successfully in {repository}\n\n{issue.html_url}")
+
 
 @cli.command()
 @click.option("-r", "--repo", help = "github repository in format username/repo", default=None)
@@ -161,10 +146,8 @@ def list(repo, state, author):
     repo = g.get_repo(repository)
     table = []
     issues = repo.get_issues(params={'state':state, 'creator':author})
-
     for issue in issues:
         table.append(issue.get_table_attrs())
-
     if len(issues) == 0:
         print(f"No {'open' if state == 'all' else ''} issues found in {repository}.")
     print(tabulate(table))
@@ -189,15 +172,9 @@ def lock(number, repo, lock_reason):
 
     g = Github(token)
     repo = g.get_repo(repository)
-    issues = repo.get_issues(params={'state':'all'})
-
-    for issue in issues:
-        if issue.number == number:
-            issue.lock_issue(lock_reason=lock_reason)
-            print(f"Issue #{issue.number} Locked in {repository}")
-
-    if len(issues) == 0:
-        print("Please enter a valid issue number")
+    issue = repo.get_issue(number)
+    issue.lock_issue(lock_reason=lock_reason)
+    print(f"Issue #{issue.number} Locked in {repository}")
 
 @cli.command()
 @click.argument("number", type=int)
@@ -213,15 +190,10 @@ def unlock(number, repo):
 
     g = Github(token)
     repo = g.get_repo(repository)
-    issues = repo.get_issues(params={'state':'all'})
+    issue = repo.get_issue(number)
+    issue.unlock_issue()
+    print(f"Issue #{issue.number} unlocked in {repository}")
 
-    for issue in issues:
-        if issue.number == number:
-            issue.unlock_issue()
-            print(f"Issue #{issue.number} unlocked in {repository}")
-    
-    if len(issues) == 0:
-        print("Please enter a valid issue number")
 
 if __name__ == '__main__':
     cli()
