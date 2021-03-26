@@ -150,7 +150,7 @@ def list(repo, state, author):
         table.append(issue.get_table_attrs())
     if len(issues) == 0:
         print(f"No {'open' if state == 'all' else ''} issues found in {repository}.")
-    print(tabulate(table))
+    print(tabulate(table, tablefmt="github"))
 
 @cli.command()
 @click.argument("number", type=int)

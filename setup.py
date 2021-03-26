@@ -13,7 +13,7 @@ requirements = [
 
 setup(
     name='gitissues',
-    version='0.0.2',
+    version='0.0.3',
     description='Manage all your git issues at one place',
     author='Roopesh V S',
     author_email='txtmeroopesh@gmail.com',
