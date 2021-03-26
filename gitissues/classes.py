@@ -16,11 +16,11 @@ class Github:
     
     def request(self, method, path, params = None, data = None):
         url = "https://api.github.com" + path
+        parameters = {}
         if params:
-            url += "?"
             for key,value in params.items():
                 if value != None:
-                    url += f"{key}={value}"
+                    parameters[key] = value
 
         if data:
             data = json.dumps(data)
@@ -28,7 +28,9 @@ class Github:
                    "accept": "application/vnd.github.v3+json"}
         response = requests.request(method, url, 
                                     headers=headers,
-                                    data = data)
+                                    params = parameters,
+                                    data = data,
+                                    )
 
         if response.status_code > 299:
             raise APIException(f"An API Exception has occured.\
@@ -51,7 +53,7 @@ class GithubRepo:
     def get_issues(self, params=None):
         path = f"{self.github.path}/issues"
         data = self.github.request("GET", path, params = params)
-        return [GithubIssue(self.github, d) for d in data]
+        return [GithubIssue(self.github, d) for d in data if d.get('pull_request', None) is None] # GitHub's REST API v3 considers every pull request an issue.
     
     def get_issue(self, number):
         path = f"{self.github.path}/issues/{number}"

@@ -168,7 +168,7 @@ def view(repo, number):
     repo = g.get_repo(repository)
     issue = repo.get_issue(number)
     
-    print(f"{COLOR['BOLD']}{issue.title}{COLOR['ENDC']}\n")
+    print(f"{COLOR['BOLD']}{issue.title}{COLOR['ENDC']} \u2022 {issue.state}\n")
     if issue.body:
         print(f"{issue.body}")
     if issue.labels:

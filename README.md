@@ -41,3 +41,9 @@ name in the format `username/repo`
 
 If the GITHUB_PROJECT variable name does not exist and if the current working directory
 is a github repository, the command takes this as the repository to work on.
+
+### Known Limitations
+
+1. In the current state of Github REST API, it is not possible to delete an issue.
+
+2. GitHub's REST API v3 considers every pull request an issue, but not every issue is a pull request. For this reason, "Issues" endpoints may return both issues and pull requests in the response. Pull requests can be identified by the pull_request key in response. Hence, right now, the number of issues returned varies as the pull requests are removed from the response till a workaround is found.
