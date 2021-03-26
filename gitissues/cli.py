@@ -3,6 +3,7 @@ import configparser
 from .utils import authenticate, get_config_path, get_token, get_repo_name
 from tabulate import tabulate
 from .classes import Github, GithubIssue
+from .colour import COLOR
 
 
 @click.group()
@@ -151,6 +152,33 @@ def list(repo, state, author):
     if len(issues) == 0:
         print(f"No {'open' if state == 'all' else ''} issues found in {repository}.")
     print(tabulate(table, tablefmt="github"))
+
+@cli.command()
+@click.argument("number", type=int)
+@click.option("-r", "--repo", help = "github repository in format username/repo", default=None)
+def view(repo, number):
+    """
+    view an issue on a github repo
+    """
+    authenticate()
+    token = get_token()
+    repository = get_repo_name(repo)
+
+    g = Github(token)
+    repo = g.get_repo(repository)
+    issue = repo.get_issue(number)
+    
+    print(f"{COLOR['BOLD']}{issue.title}{COLOR['ENDC']}\n")
+    if issue.body:
+        print(f"{issue.body}")
+    if issue.labels:
+        labels = ", ".join([label for label in issue.labels])
+        print(f"\nLabels: {COLOR['BLUE']}{labels}{COLOR['ENDC']}")
+    if issue.assignees:
+        assignees = ", ".join([assignee for assignee in issue.assignees])
+        print(f"Assignees: {COLOR['GREEN']}{assignees}{COLOR['ENDC']}")
+    print(f"\nCreated {issue.created}")
+    print(f"\nLink: {issue.html_url}\n")
 
 @cli.command()
 @click.argument("number", type=int)

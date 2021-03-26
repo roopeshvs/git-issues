@@ -29,11 +29,11 @@ class Github:
         response = requests.request(method, url, 
                                     headers=headers,
                                     data = data)
-                                    
+
         if response.status_code > 299:
             raise APIException(f"An API Exception has occured.\
                                 \nStatus Code: {response.status_code}\nResponse: {response.text}")
-        elif response.status_code == 204:
+        elif response.status_code == 204:       # 204 Responds With No Content.
             return
         return response.json()
 
