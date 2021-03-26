@@ -34,3 +34,10 @@ If you do not have a Personal Access Token, create one at [https://github.com/se
 To login, run the command
 
 `gitissues login -t <token>`
+
+If the repository is not specified as a command option where required, 
+looks for a GITHUB_PROJECT environment variable that should contain the repository 
+name in the format `username/repo`
+
+If the GITHUB_PROJECT variable name does not exist and if the current working directory
+is a github repository, the command takes this as the repository to work on.
